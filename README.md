@@ -104,6 +104,10 @@ a project root. That second part matters — without it, project.el only
 recognises version-controlled directories, and Eglot would hand the server the
 wrong root.
 
+It registers as a fallback, so a tree that *is* under version control keeps the
+built-in backend and the `git ls-files` listing that goes with it. Only a
+directory git knows nothing about is anchored on its build files instead.
+
 > **On Windows, be careful with `~` in any path you add yourself.** Emacs sets
 > `HOME` to `AppData\Roaming` there, so `~` is not your user folder. Paths
 > derived from `user-emacs-directory`, as above, are unaffected.

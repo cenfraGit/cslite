@@ -147,7 +147,10 @@ once."
 (defun cslite-setup ()
   "Register cslite with Eglot and project.el."
   (interactive)
-  (add-hook 'project-find-functions #'cslite-project-root)
+  ;; appended, so project-try-vc still wins under version control and its
+  ;; file listing stays gitignore-aware; this is the fallback for a tree
+  ;; that is not in a repository.
+  (add-hook 'project-find-functions #'cslite-project-root t)
   (add-to-list 'eglot-server-programs
                (cons (if (cdr cslite-modes) cslite-modes (car cslite-modes))
                      #'cslite-command))
