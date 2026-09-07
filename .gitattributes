@@ -1,0 +1,6 @@
+# store text as LF in git, and check it out as LF everywhere
+* text=auto eol=lf
+
+# batch files stay crlf; cmd.exe is happier with it
+*.cmd text eol=crlf
+*.bat text eol=crlf
