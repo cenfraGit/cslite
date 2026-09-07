@@ -137,7 +137,7 @@ spans several projects and the server is happiest seeing all of them at
 once."
   (when-let* ((start (expand-file-name directory)))
     (let ((solution (locate-dominating-file
-                     start (lambda (dir) (cslite--directory-has-p dir "\\.sln\\'"))))
+                     start (lambda (dir) (cslite--directory-has-p dir "\\.slnx?\\'"))))
           (project (locate-dominating-file
                     start (lambda (dir) (cslite--directory-has-p dir "\\.csproj\\'")))))
       (when-let* ((root (or solution project)))

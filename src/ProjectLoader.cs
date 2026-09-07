@@ -150,6 +150,9 @@ internal static class ProjectLoader
             .Select(element => element.Attribute("Include")?.Value)
             .Where(include => !string.IsNullOrWhiteSpace(include))
             .Select(include => Path.GetFullPath(Path.Combine(directory, include!.Replace('\\', Path.DirectorySeparatorChar))))
+            // Roslyn rejects a project with the same reference listed twice,
+            // and one such csproj would otherwise fail the whole load.
+            .Distinct(PathComparer.Instance)
             .ToList();
 
         return new DiscoveredProject

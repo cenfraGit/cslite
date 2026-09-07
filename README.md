@@ -99,9 +99,10 @@ After running the installer, the whole configuration is:
 and Eglot keybindings. Copy it into your init.el as is; it contains no paths.
 
 `cslite-setup` does two things: registers the server with Eglot, and teaches
-`project.el` to treat a directory containing a `.sln` or `.csproj` as a project
-root. That second part matters — without it, project.el only recognises
-version-controlled directories, and Eglot would hand the server the wrong root.
+`project.el` to treat a directory containing a `.sln`, `.slnx` or `.csproj` as
+a project root. That second part matters — without it, project.el only
+recognises version-controlled directories, and Eglot would hand the server the
+wrong root.
 
 > **On Windows, be careful with `~` in any path you add yourself.** Emacs sets
 > `HOME` to `AppData\Roaming` there, so `~` is not your user folder. Paths
