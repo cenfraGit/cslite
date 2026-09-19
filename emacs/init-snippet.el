@@ -58,6 +58,7 @@
 ;; xref already binds M-. and M-? ; these are the rest.
 (global-set-key (kbd "C-c l a") #'eglot-code-actions)
 ;; With consult installed, consult-imenu is the nicer one to bind here.
+(global-set-key (kbd "C-c l w") #'xref-find-apropos)
 (global-set-key (kbd "C-c l i") #'imenu)
 (global-set-key (kbd "C-c l d") #'eldoc-doc-buffer)
 (global-set-key (kbd "C-c l o") #'cslite-signatures)

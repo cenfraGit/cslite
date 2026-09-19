@@ -1,6 +1,6 @@
 # Tests
 
-Eleven suites, none of which need a test framework installed.
+Thirteen suites, none of which need a test framework installed.
 
 ## Fixtures
 
@@ -48,6 +48,14 @@ one leaves every ASP.NET type unresolved. Also checks that reference packs are
 matched to the project's target framework rather than the newest installed.
 
     python tests/framework_reference_test.py fixtures/web dist/cslite.exe
+
+## workspace_symbol_test.py
+
+Finding a symbol anywhere in the solution: exact names, prefixes, camel-case
+abbreviations, container names, ordering, and that an empty query returns
+nothing rather than the whole solution.
+
+    python tests/workspace_symbol_test.py fixtures/sample dist/cslite.exe
 
 ## document_symbol_test.py
 
@@ -107,6 +115,12 @@ killed mid-run loses whatever is still sitting in its stdout buffer.
 That the outline reaches `imenu`, which is what makes `consult-imenu` work.
 
     CSLITE_OUTLINE=fixtures/outline emacs -Q --batch -l tests/emacs-imenu-test.el
+
+## emacs-apropos-test.el
+
+That workspace symbols reach `xref-find-apropos`, camel case included.
+
+    CSLITE_SAMPLE=fixtures/sample emacs -Q --batch -l tests/emacs-apropos-test.el
 
 ## Notes on driving Eglot from batch
 

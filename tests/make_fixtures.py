@@ -64,6 +64,16 @@ public sealed class Greeter
 }
 """)
 
+write(ROOT / "sample" / "Lib" / "MessageFormatter.cs", """namespace Lib;
+
+/// <summary>Formats messages for display.</summary>
+public sealed class MessageFormatter
+{
+    /// <summary>Formats every message.</summary>
+    public string FormatAll(IEnumerable<string> messages) => string.Join("; ", messages);
+}
+""")
+
 write(ROOT / "sample" / "App" / "App.csproj", """<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>Exe</OutputType>

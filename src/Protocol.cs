@@ -104,6 +104,7 @@ internal sealed class ServerCapabilities
     public SignatureHelpOptions? SignatureHelpProvider { get; init; }
     public bool CodeActionProvider { get; init; }
     public bool DocumentSymbolProvider { get; init; }
+    public bool WorkspaceSymbolProvider { get; init; }
     public CompletionOptions? CompletionProvider { get; init; }
 }
 
@@ -305,4 +306,19 @@ internal static class SymbolKind
     public const int Struct = 23;
     public const int Event = 24;
     public const int Operator = 25;
+}
+
+// ---------------------------------------------------------------------------
+// Workspace symbols
+// ---------------------------------------------------------------------------
+
+internal sealed record WorkspaceSymbolParams(string Query);
+
+/// <summary>
+/// A symbol found anywhere in the solution. Flat rather than nested, because
+/// the results span files and have no tree to belong to.
+/// </summary>
+internal sealed record SymbolInformation(string Name, int Kind, Location Location)
+{
+    public string? ContainerName { get; init; }
 }

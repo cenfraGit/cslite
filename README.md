@@ -167,6 +167,7 @@ diagnostics appear once it does. Then check the four features:
 | All overloads | `M-x cslite-signatures` |
 | Quick fixes | `M-x eglot-code-actions` on an underlined error |
 | File outline | `M-x imenu`, or `consult-imenu` |
+| Find a symbol anywhere | `M-x xref-find-apropos` |
 | Signature help | Type `(` after a method name and wait for eldoc |
 
 Completion needs a front end to pop up on its own. With `company` or `corfu` a
@@ -229,6 +230,9 @@ type analysis, and it is the one axis on which this server is not light.
 - **Document symbols** — the file's outline, nested as written, which Eglot
   feeds to `imenu`, and so to `consult-imenu`. Built from the syntax tree, so
   it still works on a file that does not currently compile.
+- **Workspace symbols** — find any type or member in the solution by name,
+  through `xref-find-apropos`. Matching is Roslyn's own, so it understands an
+  abbreviation of the capitals: `mf` finds `MessageFormatter`.
 - **Find references** — `M-?`, across every project in the tree.
 - **Rename** — `M-x eglot-rename`, across every file and project at once.
   Renaming a symbol that lives in a referenced assembly is refused with an
@@ -236,7 +240,6 @@ type analysis, and it is the one axis on which this server is not light.
 
 ## What does not work yet
 
-- Workspace symbols: searching the whole solution by name.
 - Refactorings that are not attached to a diagnostic (extract method, inline).
 - Decompiling into metadata: go-to-definition on a framework type finds nothing,
   because there is no source to jump to.

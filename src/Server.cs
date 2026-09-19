@@ -202,6 +202,18 @@ internal sealed class Server(MessageStream messages) : IDisposable
                 break;
             }
 
+            case "workspace/symbol":
+            {
+                // Solution-wide, so this one needs the workspace rather than a
+                // document; before the workspace has loaded there is nothing to
+                // search yet.
+                var request = Parse<WorkspaceSymbolParams>(parameters);
+                Respond(id!.Value, _workspace is null
+                    ? null
+                    : RunSync(WorkspaceSymbols.SearchAsync(_workspace.Solution, request.Query, default)));
+                break;
+            }
+
             case "$/cancelRequest":
             case "$/setTrace":
             case "workspace/didChangeConfiguration":
@@ -245,6 +257,7 @@ internal sealed class Server(MessageStream messages) : IDisposable
                 SignatureHelpProvider = new SignatureHelpOptions(),
                 CodeActionProvider = true,
                 DocumentSymbolProvider = true,
+                WorkspaceSymbolProvider = true,
                 CompletionProvider = new CompletionOptions { TriggerCharacters = ["."] },
             },
             new ServerInfo("cslite", "0.1.0"));
