@@ -9,6 +9,7 @@ artifacts cslite reads instead of running MSBuild itself:
     sighelp/  overloads, params arrays and a documented constructor
     genlock/  a source generator plus a consumer that uses its output
     sandbox/  a single console project, used by the Emacs suites and by try.cmd
+    web/      an ASP.NET project, which needs a second shared framework
 """
 import subprocess
 import sys
@@ -231,10 +232,51 @@ public sealed class Broken
 }
 """)
 
+# --- web: the Web SDK, which pulls in a second shared framework -------------
+#
+# Deliberately net8.0 while the newest installed pack is likely newer, so the
+# reference packs have to be matched to the target framework rather than the
+# newest one winning.
+
+write(ROOT / "web" / "Web.csproj", """<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+</Project>
+""")
+
+write(ROOT / "web" / "Controllers" / "ThingsController.cs", """using Microsoft.AspNetCore.Mvc;
+
+namespace Web.Controllers;
+
+[ApiController]
+[Route("[controller]")]
+public sealed class ThingsController : ControllerBase
+{
+    /// <summary>Returns every thing.</summary>
+    [HttpGet]
+    public IActionResult GetAll() => Ok(new[] { "one", "two" });
+
+    [HttpGet("{id}")]
+    public ActionResult<string> GetOne(int id) => Ok(id.ToString());
+}
+""")
+
+write(ROOT / "web" / "Program.cs", """var builder = WebApplication.CreateBuilder(args);
+builder.Services.AddControllers();
+
+var app = builder.Build();
+app.MapControllers();
+app.Run();
+""")
+
 print(f"writing fixtures to {ROOT}")
 build(ROOT / "sample" / "App" / "App.csproj", "sample")
 build(ROOT / "sighelp" / "Sig.csproj", "sighelp")
 build(ROOT / "genlock" / "Consumer" / "Consumer.csproj", "genlock")
+build(ROOT / "web" / "Web.csproj", "web")
 build(ROOT / "sandbox" / "Sandbox.csproj", "sandbox", expect_success=False)
 
 # The sandbox does not compile, so check directly that the pieces cslite needs
@@ -256,6 +298,7 @@ ready. run the suites with:
   python tests/references_rename_test.py {ROOT / 'sample'} dist/cslite.exe
   python tests/signature_help_test.py    {ROOT / 'sighelp'} dist/cslite.exe
   python tests/generator_lock_test.py    {ROOT / 'genlock'} dist/cslite.exe
+  python tests/framework_reference_test.py {ROOT / 'web'} dist/cslite.exe
 
 and the Emacs suites with:
 

@@ -106,7 +106,8 @@ internal sealed class CSharpWorkspace : IDisposable
                 project.LanguageVersion,
                 preprocessorSymbols: project.PreprocessorSymbols),
             documents: documents,
-            metadataReferences: References.ForProject(project.Directory));
+            metadataReferences: References.ForProject(
+                project.Directory, project.TargetFramework, project.FrameworkReferences));
     }
 
     // -----------------------------------------------------------------------

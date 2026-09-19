@@ -244,6 +244,12 @@ will be analysed as inactive.
 NuGet references come from `obj/project.assets.json`. A project that has never
 been restored will show unresolved-type errors until you run `dotnet restore`.
 
+Shared frameworks come from the same file, plus the csproj itself: the Web SDK
+implies `Microsoft.AspNetCore.App`, and `UseWPF` or `UseWindowsForms` imply
+`Microsoft.WindowsDesktop.App`. Reference packs are matched to the project's
+target framework, so a `net8.0` project is not analysed against `net10.0`
+assemblies.
+
 ## Layout
 
 | File | Purpose |

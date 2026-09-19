@@ -1,6 +1,6 @@
 # Tests
 
-Seven suites, none of which need a test framework installed.
+Eight suites, none of which need a test framework installed.
 
 ## Fixtures
 
@@ -39,6 +39,15 @@ overload ordering, constructors, `params` arrays, half-typed calls with no
 closing paren, and returning nothing outside a call.
 
     python tests/signature_help_test.py fixtures/sighelp dist/cslite.exe
+
+## framework_reference_test.py
+
+That a project needing a second shared framework gets it. The Web SDK declares
+Microsoft.AspNetCore.App alongside the base framework; resolving only the base
+one leaves every ASP.NET type unresolved. Also checks that reference packs are
+matched to the project's target framework rather than the newest installed.
+
+    python tests/framework_reference_test.py fixtures/web dist/cslite.exe
 
 ## generator_lock_test.py
 

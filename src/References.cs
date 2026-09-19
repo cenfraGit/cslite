@@ -8,8 +8,8 @@ namespace CsLite;
 /// Finds the assemblies a compilation needs, without asking MSBuild.
 /// </summary>
 /// <remarks>
-/// Framework assemblies come from the SDK reference pack (or, failing that, the
-/// running runtime's own directory). NuGet assemblies are read out of
+/// Framework assemblies come from the SDK reference packs (or, failing that,
+/// the running runtime's own directory). NuGet assemblies are read out of
 /// obj/project.assets.json, which "dotnet restore" already wrote for us.
 /// <para>
 /// Nothing here ever loads an assembly into this process. Roslyn maps the file
@@ -19,18 +19,43 @@ namespace CsLite;
 /// </remarks>
 internal static class References
 {
-    public static IReadOnlyList<MetadataReference> ForProject(string projectDirectory)
+    /// <summary>The framework every project compiles against, whatever else it asks for.</summary>
+    private const string BaseFramework = "Microsoft.NETCore.App";
+
+    /// <summary>
+    /// Everything a project compiles against: its shared frameworks, then its
+    /// NuGet packages.
+    /// </summary>
+    /// <param name="declaredFrameworks">
+    /// Shared frameworks named by the csproj itself. Used alongside what the
+    /// restore recorded, so a project that has never been restored still gets
+    /// its framework right.
+    /// </param>
+    public static IReadOnlyList<MetadataReference> ForProject(
+        string projectDirectory,
+        string? targetFramework,
+        IEnumerable<string> declaredFrameworks)
     {
         // Keyed by simple assembly name: two references with the same identity
         // make Roslyn emit CS1703 and poison every file in the project.
         var byName = new Dictionary<string, MetadataReference>(StringComparer.OrdinalIgnoreCase);
 
+        var frameworks = new SortedSet<string>(StringComparer.OrdinalIgnoreCase) { BaseFramework };
+        frameworks.UnionWith(declaredFrameworks);
+        frameworks.UnionWith(FrameworkReferencesFrom(projectDirectory));
+
         // Framework first, so a package that happens to ship a same-named
         // assembly cannot displace the one the runtime will actually load.
-        foreach (var path in FrameworkAssemblies()) Add(byName, path);
+        foreach (var framework in frameworks)
+        {
+            foreach (var path in FrameworkAssemblies(framework, targetFramework)) Add(byName, path);
+        }
+
         foreach (var path in NuGetAssemblies(projectDirectory)) Add(byName, path);
 
-        Log.Debug($"resolved {byName.Count} references for {projectDirectory}");
+        Log.Debug($"resolved {byName.Count} references for {projectDirectory} "
+                  + $"[{string.Join(", ", frameworks)}] targeting {targetFramework ?? "unknown"}");
+
         return byName.Values.ToList();
     }
 
@@ -52,48 +77,91 @@ internal static class References
     }
 
     // -----------------------------------------------------------------------
-    // Framework
+    // Shared frameworks
     // -----------------------------------------------------------------------
 
-    private static IEnumerable<string> FrameworkAssemblies()
+    /// <summary>
+    /// The assemblies of one shared framework: <c>Microsoft.NETCore.App</c> for
+    /// the base framework, <c>Microsoft.AspNetCore.App</c> for a web project,
+    /// <c>Microsoft.WindowsDesktop.App</c> for WPF or WinForms.
+    /// </summary>
+    private static IEnumerable<string> FrameworkAssemblies(string framework, string? targetFramework)
     {
-        var referencePack = FindReferencePack();
+        var referencePack = FindReferencePack(framework + ".Ref", targetFramework);
         if (referencePack is not null)
         {
-            Log.Debug($"framework reference pack: {referencePack}");
+            Log.Debug($"{framework}: {referencePack}");
             return Directory.EnumerateFiles(referencePack, "*.dll");
         }
 
-        // Reference packs only ship with the SDK. On a runtime-only machine we
-        // fall back to the implementation assemblies we are running on.
+        // Reference packs only ship with the SDK. For the base framework we can
+        // still fall back to the runtime we are executing on; the others have no
+        // equivalent, and their absence is worth saying out loud because every
+        // type in them is about to come back unresolved.
+        if (!string.Equals(framework, BaseFramework, StringComparison.OrdinalIgnoreCase))
+        {
+            Log.Warn($"no reference pack for {framework}; its types will not resolve");
+            return [];
+        }
+
         var runtime = RuntimeEnvironment.GetRuntimeDirectory();
         Log.Debug($"no reference pack found, falling back to runtime at {runtime}");
+
         return Directory.EnumerateFiles(runtime, "*.dll")
             .Where(path => !Path.GetFileName(path).EndsWith(".resources.dll", StringComparison.OrdinalIgnoreCase));
     }
 
-    private static string? FindReferencePack()
+    /// <summary>
+    /// Finds the reference pack for a framework, preferring the one built for
+    /// the project's own target framework.
+    /// </summary>
+    /// <remarks>
+    /// Taking the newest installed pack regardless would let a net8.0 project
+    /// compile against net10.0 reference assemblies, and the editor would then
+    /// accept APIs that do not exist in the version actually being built.
+    /// </remarks>
+    private static string? FindReferencePack(string packName, string? targetFramework)
     {
         var dotnetRoot = FindDotnetRoot();
         if (dotnetRoot is null) return null;
 
-        var packs = Path.Combine(dotnetRoot, "packs", "Microsoft.NETCore.App.Ref");
+        var packs = Path.Combine(dotnetRoot, "packs", packName);
         if (!Directory.Exists(packs)) return null;
 
-        // Highest installed version, then the highest target framework inside it.
-        foreach (var version in Directory.EnumerateDirectories(packs).OrderByDescending(NumericVersionOf))
+        var candidates = new List<(Version Version, string Moniker, string Path)>();
+
+        foreach (var version in SafeDirectories(packs))
         {
             var reference = Path.Combine(version, "ref");
             if (!Directory.Exists(reference)) continue;
 
-            var framework = Directory.EnumerateDirectories(reference)
-                .OrderByDescending(NumericVersionOf)
-                .FirstOrDefault();
-
-            if (framework is not null) return framework;
+            foreach (var moniker in SafeDirectories(reference))
+                candidates.Add((NumericVersionOf(version), Path.GetFileName(moniker), moniker));
         }
 
-        return null;
+        if (candidates.Count == 0) return null;
+
+        // A "net10.0-windows" project builds against the "net10.0" pack.
+        var wanted = targetFramework?.Split('-').FirstOrDefault();
+
+        if (wanted is { Length: > 0 })
+        {
+            var exact = candidates
+                .Where(candidate => string.Equals(candidate.Moniker, wanted, StringComparison.OrdinalIgnoreCase))
+                .OrderByDescending(candidate => candidate.Version)
+                .Select(candidate => candidate.Path)
+                .FirstOrDefault();
+
+            if (exact is not null) return exact;
+
+            Log.Warn($"no {packName} for {wanted}; using the newest installed instead");
+        }
+
+        return candidates
+            .OrderByDescending(candidate => NumericVersionOf(candidate.Moniker))
+            .ThenByDescending(candidate => candidate.Version)
+            .First()
+            .Path;
     }
 
     private static string? FindDotnetRoot()
@@ -118,9 +186,61 @@ internal static class References
         return Version.TryParse(digits, out var version) ? version : new Version(0, 0);
     }
 
+    private static IEnumerable<string> SafeDirectories(string directory)
+    {
+        try
+        {
+            return Directory.EnumerateDirectories(directory);
+        }
+        catch (Exception error)
+        {
+            Log.Debug($"skipping {directory}: {error.Message}");
+            return [];
+        }
+    }
+
     // -----------------------------------------------------------------------
     // NuGet
     // -----------------------------------------------------------------------
+
+    /// <summary>
+    /// Reads the shared frameworks the restore recorded. This is how a web or
+    /// desktop project says it needs more than the base framework, and missing
+    /// it is what makes every ASP.NET or WPF type come back unresolved.
+    /// </summary>
+    private static IEnumerable<string> FrameworkReferencesFrom(string projectDirectory)
+    {
+        var assets = Path.Combine(projectDirectory, "obj", "project.assets.json");
+        if (!File.Exists(assets)) yield break;
+
+        JsonDocument document;
+        try
+        {
+            document = JsonDocument.Parse(File.ReadAllBytes(assets));
+        }
+        catch (Exception error)
+        {
+            Log.Warn($"could not read {assets}: {error.Message}");
+            yield break;
+        }
+
+        using (document)
+        {
+            if (!document.RootElement.TryGetProperty("project", out var project)
+                || !project.TryGetProperty("frameworks", out var frameworks))
+            {
+                yield break;
+            }
+
+            foreach (var framework in frameworks.EnumerateObject())
+            {
+                if (!framework.Value.TryGetProperty("frameworkReferences", out var references)) continue;
+
+                foreach (var reference in references.EnumerateObject())
+                    yield return reference.Name;
+            }
+        }
+    }
 
     /// <summary>
     /// Reads compile-time package assemblies straight out of the restore

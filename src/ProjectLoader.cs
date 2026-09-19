@@ -14,6 +14,16 @@ internal sealed record DiscoveredProject
     public string? CsprojPath { get; init; }
 
     public OutputKind OutputKind { get; init; } = OutputKind.DynamicallyLinkedLibrary;
+
+    /// <summary>The single target framework, e.g. "net10.0"; the first of several.</summary>
+    public string? TargetFramework { get; init; }
+
+    /// <summary>
+    /// Shared frameworks the csproj asks for, beyond the base one: the Web SDK
+    /// implies Microsoft.AspNetCore.App, and WPF or WinForms imply
+    /// Microsoft.WindowsDesktop.App.
+    /// </summary>
+    public IReadOnlyList<string> FrameworkReferences { get; init; } = [];
     public LanguageVersion LanguageVersion { get; init; } = LanguageVersion.Preview;
     public NullableContextOptions Nullable { get; init; } = NullableContextOptions.Disable;
     public bool AllowUnsafe { get; init; }
@@ -145,6 +155,34 @@ internal static class ProjectLoader
                 .Where(symbol => !symbol.StartsWith('$')));
         }
 
+        // Multi-targeting is rare in the projects this server is meant for, and
+        // analysing the first framework beats refusing to analyse anything.
+        var targetFramework = Property("TargetFramework")
+            ?? Property("TargetFrameworks")
+                ?.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .FirstOrDefault();
+
+        var frameworkReferences = new List<string>();
+
+        // The SDK attribute is what makes a web project a web project; without
+        // this, every ASP.NET type in it comes back unresolved.
+        var sdk = document.Root?.Attribute("Sdk")?.Value
+                  ?? document.Descendants().FirstOrDefault(e => e.Name.LocalName == "Sdk")
+                      ?.Attribute("Name")?.Value
+                  ?? string.Empty;
+
+        if (sdk.Contains("Web", StringComparison.OrdinalIgnoreCase))
+            frameworkReferences.Add("Microsoft.AspNetCore.App");
+
+        if (IsTrue(Property("UseWPF")) || IsTrue(Property("UseWindowsForms")))
+            frameworkReferences.Add("Microsoft.WindowsDesktop.App");
+
+        frameworkReferences.AddRange(document.Descendants()
+            .Where(element => element.Name.LocalName == "FrameworkReference")
+            .Select(element => element.Attribute("Include")?.Value)
+            .Where(include => !string.IsNullOrWhiteSpace(include))
+            .Select(include => include!));
+
         var projectReferences = document.Descendants()
             .Where(element => element.Name.LocalName == "ProjectReference")
             .Select(element => element.Attribute("Include")?.Value)
@@ -166,6 +204,8 @@ internal static class ProjectLoader
                 ? OutputKind.ConsoleApplication
                 : OutputKind.DynamicallyLinkedLibrary,
             LanguageVersion = languageVersion,
+            TargetFramework = targetFramework,
+            FrameworkReferences = frameworkReferences.Distinct(StringComparer.OrdinalIgnoreCase).ToList(),
             Nullable = string.Equals(Property("Nullable"), "enable", StringComparison.OrdinalIgnoreCase)
                 ? NullableContextOptions.Enable
                 : NullableContextOptions.Disable,
@@ -174,6 +214,9 @@ internal static class ProjectLoader
             ProjectReferences = projectReferences,
         };
     }
+
+    private static bool IsTrue(string? value) =>
+        string.Equals(value, "true", StringComparison.OrdinalIgnoreCase);
 
     // -----------------------------------------------------------------------
     // Walking the tree
