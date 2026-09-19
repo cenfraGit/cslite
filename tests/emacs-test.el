@@ -19,7 +19,9 @@
 (require 'cslite)
 (require 'flymake)
 
-(setq cslite-executable (expand-file-name "dist/cslite.exe" test-repo)
+(setq cslite-executable
+      (expand-file-name (if (eq system-type 'windows-nt) "dist/cslite.exe" "dist/cslite")
+                        test-repo)
       cslite-auto-start nil
       cslite-verbose t
       cslite-log-file (expand-file-name "cslite-emacs-test.log"
@@ -98,7 +100,7 @@
 
 (find-file (expand-file-name "Broken.cs" test-sandbox))
 (pump 2)
-'(check "flymake-mode is on in the C# buffer" (bound-and-true-p flymake-mode))
+(check "flymake-mode is on in the C# buffer" (bound-and-true-p flymake-mode))
 
 ;; Flymake normally runs its backends from an idle timer, which never fires
 ;; under --batch, so the diagnostics would sit in eglot unreported. Ask for a

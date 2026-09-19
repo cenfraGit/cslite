@@ -81,8 +81,14 @@ The server locks its own DLL while running, so stop it in Emacs
 (`M-x eglot-shutdown`) before reinstalling.
 
 The server targets `net8.0`, so it runs on any machine with a .NET 8 or newer
-runtime. Windows and Linux are both supported; there is no platform-specific
-code, only stdio.
+runtime.
+
+Windows is what this has actually been used and tested on. Linux should work —
+there is no platform-specific code beyond path comparison, the protocol is
+stdio, and the reference packs live in the same place under the SDK — but it
+has not been run there, so treat it as unverified rather than supported. The
+binary is not portable between the two: publish on the machine you will run on,
+which is what `install.sh` does.
 
 ## Emacs
 

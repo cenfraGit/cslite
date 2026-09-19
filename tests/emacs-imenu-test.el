@@ -1,5 +1,6 @@
 ;;; The outline reaching imenu, which is how you actually navigate with it.
-(defconst out (getenv "CSLITE_OUT"))
+(defconst out (or (getenv "CSLITE_OUT")
+                  (expand-file-name "cslite-imenu-test.out" temporary-file-directory)))
 (defvar failures '())
 (defun say (s) (write-region (concat s "\n") nil out 'append 'silent))
 (defun check (l ok &optional d)

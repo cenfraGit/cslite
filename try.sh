@@ -14,6 +14,12 @@ config="$repo/emacs/test-config"
 if [ ! -x "$repo/dist/cslite" ]; then
     echo "The server is not built yet. Run this first:"
     echo "    dotnet publish -c Release -o dist"
+    # A build copied from Windows leaves a .exe and no Linux apphost, which is
+    # a confusing way to be missing a binary.
+    if [ -e "$repo/dist/cslite.exe" ]; then
+        echo
+        echo "(dist/ holds a Windows build; publish again on this machine)"
+    fi
     exit 1
 fi
 

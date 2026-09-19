@@ -11,12 +11,21 @@
 set -euo pipefail
 
 repo="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-emacsd="${1:-$HOME/.emacs.d}"
-
-if [ ! -d "$emacsd" ]; then
-    echo "No Emacs configuration at $emacsd"
+# Emacs 27+ prefers ~/.config/emacs when it exists, and many Linux setups use
+# it, so look there too rather than insisting on ~/.emacs.d.
+if [ $# -ge 1 ]; then
+    emacsd="$1"
+elif [ -d "$HOME/.emacs.d" ]; then
+    emacsd="$HOME/.emacs.d"
+elif [ -d "${XDG_CONFIG_HOME:-$HOME/.config}/emacs" ]; then
+    emacsd="${XDG_CONFIG_HOME:-$HOME/.config}/emacs"
+else
+    echo "No Emacs configuration found at $HOME/.emacs.d or ${XDG_CONFIG_HOME:-$HOME/.config}/emacs"
+    echo "Pass the directory explicitly: ./install.sh /path/to/your/emacs/config"
     exit 1
 fi
+
+echo "Installing into $emacsd"
 
 echo "Publishing..."
 (cd "$repo" && dotnet publish -c Release -o dist --nologo -v q)
