@@ -10,6 +10,7 @@ artifacts cslite reads instead of running MSBuild itself:
     genlock/  a source generator plus a consumer that uses its output
     sandbox/  a single console project, used by the Emacs suites and by try.cmd
     web/      an ASP.NET project, which needs a second shared framework
+    outline/  one file holding every kind of declaration, for the outline
 """
 import subprocess
 import sys
@@ -272,11 +273,80 @@ app.MapControllers();
 app.Run();
 """)
 
+# --- outline: every declaration shape, for document symbols ----------------
+
+write(ROOT / "outline" / "Outline.csproj", """<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+</Project>
+""")
+
+write(ROOT / "outline" / "Shapes.cs", """namespace Outline;
+
+public interface IShape
+{
+    double Area { get; }
+}
+
+public enum Colour
+{
+    Red,
+    Green,
+}
+
+public readonly struct Point
+{
+    public Point(int x, int y) => (X, Y) = (x, y);
+
+    public int X { get; }
+    public int Y { get; }
+}
+
+public delegate void Painted(Colour colour);
+
+public sealed class Canvas : IShape
+{
+    public const int MaxLayers = 8;
+
+    private readonly List<string> _layers = new();
+    private int _width, _height;
+
+    public event Painted? OnPainted;
+
+    public Canvas(int width, int height)
+    {
+        _width = width;
+        _height = height;
+    }
+
+    ~Canvas() { }
+
+    public double Area => _width * _height;
+
+    public string this[int index] => _layers[index];
+
+    public void Paint(Colour colour, int layer = 0) { }
+
+    public static Canvas operator +(Canvas left, Canvas right) => left;
+
+    public sealed class Layer
+    {
+        public string Name { get; set; } = "";
+
+        public void Clear() { }
+    }
+}
+""")
+
 print(f"writing fixtures to {ROOT}")
 build(ROOT / "sample" / "App" / "App.csproj", "sample")
 build(ROOT / "sighelp" / "Sig.csproj", "sighelp")
 build(ROOT / "genlock" / "Consumer" / "Consumer.csproj", "genlock")
 build(ROOT / "web" / "Web.csproj", "web")
+build(ROOT / "outline" / "Outline.csproj", "outline")
 build(ROOT / "sandbox" / "Sandbox.csproj", "sandbox", expect_success=False)
 
 # The sandbox does not compile, so check directly that the pieces cslite needs
@@ -299,6 +369,7 @@ ready. run the suites with:
   python tests/signature_help_test.py    {ROOT / 'sighelp'} dist/cslite.exe
   python tests/generator_lock_test.py    {ROOT / 'genlock'} dist/cslite.exe
   python tests/framework_reference_test.py {ROOT / 'web'} dist/cslite.exe
+  python tests/document_symbol_test.py   {ROOT / 'outline'} dist/cslite.exe
 
 and the Emacs suites with:
 

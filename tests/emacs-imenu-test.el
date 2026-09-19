@@ -1,0 +1,47 @@
+;;; The outline reaching imenu, which is how you actually navigate with it.
+(defconst out (getenv "CSLITE_OUT"))
+(defvar failures '())
+(defun say (s) (write-region (concat s "\n") nil out 'append 'silent))
+(defun check (l ok &optional d)
+  (say (format "  %s  %s%s" (if ok "PASS" "FAIL") l (if (and d (not ok)) (format "   %s" d) "")))
+  (unless ok (push l failures)))
+(defun pump-until (s p) (let ((e (+ (float-time) s))) (while (and (< (float-time) e) (not (funcall p))) (accept-process-output nil 0.05)) (funcall p)))
+
+(defconst test-repo (or (getenv "CSLITE_REPO")
+                        (directory-file-name (expand-file-name ".." (file-name-directory load-file-name)))))
+(add-to-list 'load-path (expand-file-name "emacs" test-repo))
+(require 'eglot) (require 'cslite) (require 'imenu)
+(setq cslite-executable
+      (expand-file-name (if (eq system-type 'windows-nt) "dist/cslite.exe" "dist/cslite") test-repo)
+      cslite-auto-start nil)
+(cslite-setup)
+
+(setq eglot-sync-connect 1 eglot-connect-timeout 120)
+(find-file (expand-file-name "Shapes.cs" (or (getenv "CSLITE_OUTLINE")
+                                       (error "Set CSLITE_OUTLINE to the outline fixture directory"))))
+(apply #'eglot--connect (eglot--guess-contact))
+(check "connected" (pump-until 120 (lambda () (eglot-current-server))))
+(check "server offers document symbols" (eglot-server-capable :documentSymbolProvider))
+
+;; eglot installs itself as imenu's index function for managed buffers.
+(let ((index (funcall imenu-create-index-function)))
+  (check "imenu produced an index" (and index (> (length index) 0))
+         (format "%S" index))
+  (say (format "  top level: %S" (mapcar #'car index)))
+  ;; Flatten whatever nesting eglot chose, and look for the names we expect.
+  (let ((flat '()))
+    (cl-labels ((walk (entries)
+                  (dolist (entry entries)
+                    (cond ((and (consp entry) (listp (cdr entry)) (consp (cadr entry)))
+                           (push (car entry) flat) (walk (cdr entry)))
+                          ((consp entry) (push (car entry) flat))))))
+      (walk index))
+    (say (format "  %d entries" (length flat)))
+    (dolist (wanted '("Canvas" "Paint" "Layer" "Colour"))
+      (check (format "imenu knows %s" wanted)
+             (seq-find (lambda (n) (string-match-p (regexp-quote wanted) (format "%s" n))) flat)
+             (format "%S" (seq-take flat 15))))))
+
+(when (eglot-current-server) (ignore-errors (eglot-shutdown (eglot-current-server) nil 15)))
+(say (if failures (format "FAILED: %s" (string-join (reverse failures) "; ")) "all checks passed"))
+(kill-emacs (if failures 1 0))

@@ -1,6 +1,6 @@
 # Tests
 
-Nine suites, none of which need a test framework installed.
+Eleven suites, none of which need a test framework installed.
 
 ## Fixtures
 
@@ -49,6 +49,14 @@ matched to the project's target framework rather than the newest installed.
 
     python tests/framework_reference_test.py fixtures/web dist/cslite.exe
 
+## document_symbol_test.py
+
+Every kind of declaration in one file -- namespaces, types, members, operators,
+indexers, multi-variable fields -- with the nesting, the range invariants LSP
+requires, and that the outline survives a syntax error.
+
+    python tests/document_symbol_test.py fixtures/outline dist/cslite.exe
+
 ## code_action_test.py
 
 That an error offers a fix, that the fix arrives with its edit attached, and
@@ -93,6 +101,12 @@ It edits buffers but never saves them, so the project on disk is untouched.
 
 Results are written to a file rather than stdout, because a batch Emacs that is
 killed mid-run loses whatever is still sitting in its stdout buffer.
+
+## emacs-imenu-test.el
+
+That the outline reaches `imenu`, which is what makes `consult-imenu` work.
+
+    CSLITE_OUTLINE=fixtures/outline emacs -Q --batch -l tests/emacs-imenu-test.el
 
 ## Notes on driving Eglot from batch
 

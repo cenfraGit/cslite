@@ -158,6 +158,16 @@ internal sealed class Server(MessageStream messages) : IDisposable
                     RunSync(SignatureHelpProvider.ForAsync(document, position, default))));
                 break;
 
+            case "textDocument/documentSymbol":
+            {
+                var request = Parse<TextDocumentParams>(parameters);
+                var document = DocumentFor(request.TextDocument.Uri);
+                Respond(id!.Value, document is null
+                    ? null
+                    : RunSync(DocumentSymbols.ForAsync(document, default)));
+                break;
+            }
+
             case "textDocument/codeAction":
             {
                 var request = Parse<CodeActionParams>(parameters);
@@ -234,6 +244,7 @@ internal sealed class Server(MessageStream messages) : IDisposable
                 RenameProvider = true,
                 SignatureHelpProvider = new SignatureHelpOptions(),
                 CodeActionProvider = true,
+                DocumentSymbolProvider = true,
                 CompletionProvider = new CompletionOptions { TriggerCharacters = ["."] },
             },
             new ServerInfo("cslite", "0.1.0"));

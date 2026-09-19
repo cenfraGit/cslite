@@ -103,6 +103,7 @@ internal sealed class ServerCapabilities
     public bool RenameProvider { get; init; }
     public SignatureHelpOptions? SignatureHelpProvider { get; init; }
     public bool CodeActionProvider { get; init; }
+    public bool DocumentSymbolProvider { get; init; }
     public CompletionOptions? CompletionProvider { get; init; }
 }
 
@@ -270,4 +271,38 @@ internal sealed record CodeActionItem(string Title)
     public string? Kind { get; init; }
     public IReadOnlyList<Diagnostic>? Diagnostics { get; init; }
     public WorkspaceEdit? Edit { get; init; }
+}
+
+// ---------------------------------------------------------------------------
+// Document symbols
+// ---------------------------------------------------------------------------
+
+/// <summary>
+/// One entry in a file's outline. <paramref name="Range"/> covers the whole
+/// declaration and <paramref name="SelectionRange"/> just its name, which is
+/// where an editor puts point when you pick the entry.
+/// </summary>
+internal sealed record DocumentSymbol(string Name, int Kind, Range Range, Range SelectionRange)
+{
+    public string? Detail { get; init; }
+    public IReadOnlyList<DocumentSymbol>? Children { get; init; }
+}
+
+/// <summary>The LSP symbol kinds we produce, which pick the icon an editor shows.</summary>
+internal static class SymbolKind
+{
+    public const int Namespace = 3;
+    public const int Class = 5;
+    public const int Method = 6;
+    public const int Property = 7;
+    public const int Field = 8;
+    public const int Constructor = 9;
+    public const int Enum = 10;
+    public const int Interface = 11;
+    public const int Function = 12;
+    public const int Constant = 14;
+    public const int EnumMember = 22;
+    public const int Struct = 23;
+    public const int Event = 24;
+    public const int Operator = 25;
 }
