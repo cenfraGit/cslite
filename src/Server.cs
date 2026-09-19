@@ -29,6 +29,9 @@ internal sealed class Server(MessageStream messages) : IDisposable
     /// <summary>Files the editor currently has open, so we can refresh their diagnostics.</summary>
     private readonly HashSet<string> _openFiles = new(PathComparer.Instance);
 
+    /// <summary>Polls the editor process, so we do not outlive it.</summary>
+    private Timer? _editorWatchdog;
+
     public int Run()
     {
         while (true)
@@ -206,6 +209,7 @@ internal sealed class Server(MessageStream messages) : IDisposable
     {
         _root = RootFrom(parameters) ?? Directory.GetCurrentDirectory();
         _hoverMarkdown = AcceptsMarkdownHover(parameters);
+        WatchEditor(parameters);
 
         Log.Info($"workspace root: {_root}");
         Log.Info($"hover format: {(_hoverMarkdown ? "markdown" : "plaintext")}");
@@ -222,6 +226,63 @@ internal sealed class Server(MessageStream messages) : IDisposable
                 CompletionProvider = new CompletionOptions { TriggerCharacters = ["."] },
             },
             new ServerInfo("cslite", "0.1.0"));
+    }
+
+    /// <summary>
+    /// Exits if the editor that started us disappears.
+    /// </summary>
+    /// <remarks>
+    /// Normally the pipe closing is enough: stdin reaches end of stream and the
+    /// loop returns. But an editor that is killed outright, or that leaves the
+    /// handle open in a child, can strand this process running forever. A
+    /// stranded server holds its binary and its log file open, which on Windows
+    /// blocks the next build and stops the replacement server from starting.
+    /// The editor tells us its process id at initialize for exactly this, so
+    /// poll it and leave when it is gone.
+    /// </remarks>
+    private void WatchEditor(JsonElement parameters)
+    {
+        if (parameters.ValueKind != JsonValueKind.Object
+            || !parameters.TryGetProperty("processId", out var value)
+            || value.ValueKind != JsonValueKind.Number
+            || !value.TryGetInt32(out var processId))
+        {
+            Log.Debug("the editor did not name a process to watch");
+            return;
+        }
+
+        Log.Info($"watching editor process {processId}");
+
+        var interval = TimeSpan.FromSeconds(10);
+        _editorWatchdog = new Timer(
+            _ =>
+            {
+                if (IsRunning(processId)) return;
+
+                Log.Info($"editor process {processId} is gone, exiting");
+                Log.Close();
+                Environment.Exit(0);
+            },
+            null, interval, interval);
+    }
+
+    private static bool IsRunning(int processId)
+    {
+        try
+        {
+            using var process = Process.GetProcessById(processId);
+            return !process.HasExited;
+        }
+        catch (ArgumentException)
+        {
+            return false;   // no process with that id
+        }
+        catch (Exception error)
+        {
+            // Never exit on the strength of a question we could not ask.
+            Log.Debug($"could not check process {processId}: {error.Message}");
+            return true;
+        }
     }
 
     /// <summary>
@@ -372,5 +433,9 @@ internal sealed class Server(MessageStream messages) : IDisposable
             Error = new ResponseError { Code = ErrorCodes.InternalError, Message = error.Message },
         });
 
-    public void Dispose() => _workspace?.Dispose();
+    public void Dispose()
+    {
+        _editorWatchdog?.Dispose();
+        _workspace?.Dispose();
+    }
 }

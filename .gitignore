@@ -57,3 +57,6 @@ TestResult.xml
 nunit-*.xml
 
 dist/
+
+# generated test projects
+fixtures/

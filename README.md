@@ -20,6 +20,8 @@ to do, and the reason it stays small.
 - **One thread.** Each message is handled to completion before the next is read,
   so there is no race between an edit and the analysis of that edit.
 - **No caching layer** beyond what Roslyn does internally.
+- **Never outlives its editor.** The process id from `initialize` is polled, so
+  a server whose editor was killed exits instead of stranding itself.
 
 The C# understanding itself comes from Roslyn, the same compiler `dotnet build`
 uses. Writing a C# parser by hand would make the dependency list shorter and the

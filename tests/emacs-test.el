@@ -2,8 +2,16 @@
 
 (setq debug-on-error t)
 
-(defconst test-repo "C:/Users/cenic/OneDrive/Desktop/LSP")
-(defconst test-sandbox "C:/Users/cenic/OneDrive/Desktop/cslite-sandbox")
+;; Derived from this file's own location, so moving the repository does not
+;; break the test; override either with an environment variable.
+(defconst test-repo
+  (or (getenv "CSLITE_REPO")
+      (directory-file-name
+       (expand-file-name ".." (file-name-directory (or load-file-name buffer-file-name))))))
+
+(defconst test-sandbox
+  (or (getenv "CSLITE_SANDBOX")
+      (error "Set CSLITE_SANDBOX to a restored C# project directory")))
 
 (add-to-list 'load-path (expand-file-name "emacs" test-repo))
 

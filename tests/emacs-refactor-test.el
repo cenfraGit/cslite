@@ -1,4 +1,26 @@
 ;;; Find-references and rename through Eglot, logging each step unbuffered.
+;;
+;; Self-contained, so it runs under -Q without any configuration:
+;;
+;;   CSLITE_SANDBOX=/path/to/project emacs -Q --batch -l tests/emacs-refactor-test.el
+
+(defconst test-repo
+  (or (getenv "CSLITE_REPO")
+      (directory-file-name
+       (expand-file-name ".." (file-name-directory (or load-file-name buffer-file-name))))))
+
+(add-to-list 'load-path (expand-file-name "emacs" test-repo))
+
+(require 'eglot)
+(require 'cslite)
+(require 'flymake)
+
+(setq cslite-executable
+      (expand-file-name (if (eq system-type 'windows-nt) "dist/cslite.exe" "dist/cslite")
+                        test-repo)
+      cslite-auto-start nil)
+(cslite-setup)
+
 (defconst out (or (getenv "CSLITE_OUT")
                   (expand-file-name "cslite-refactor-test.out" temporary-file-directory)))
 (defvar failures '())
