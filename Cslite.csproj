@@ -8,6 +8,12 @@
     <AssemblyName>cslite</AssemblyName>
     <RootNamespace>CsLite</RootNamespace>
     <InvariantGlobalization>true</InvariantGlobalization>
+    <!-- Targeting net8.0 keeps the server runnable on older machines, but by
+         default a net8.0 app refuses to start unless the .NET 8 runtime itself
+         is present. Rolling forward lets one published build run on whatever
+         newer runtime a machine happens to have, which is the difference
+         between "works here" and "works where you put it". -->
+    <RollForward>LatestMajor</RollForward>
     <!-- We never want the server's own stdout polluted by build/runtime chatter. -->
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
   </PropertyGroup>
