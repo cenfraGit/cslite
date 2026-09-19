@@ -22,4 +22,14 @@
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Features" Version="4.14.0" />
   </ItemGroup>
 
+  <!-- The test fixtures are whole C# projects of their own, and tests/README
+       tells you to generate them here. The SDK globs **/*.cs, so without this
+       they are compiled into the server and it fails to build: several of them
+       have top-level statements, and one does not compile on purpose. -->
+  <ItemGroup>
+    <Compile Remove="fixtures/**" />
+    <None Remove="fixtures/**" />
+    <EmbeddedResource Remove="fixtures/**" />
+  </ItemGroup>
+
 </Project>
