@@ -116,6 +116,12 @@ It registers as a fallback, so a tree that *is* under version control keeps the
 built-in backend and the `git ls-files` listing that goes with it. Only a
 directory git knows nothing about is anchored on its build files instead.
 
+One consequence worth knowing: a C# project sitting inside a larger git
+repository is rooted at the repository, not at the csproj, so the server loads
+every `.cs` file under it. That is usually what you want, since a repository
+and a solution normally coincide, but it is why a project buried in a monorepo
+takes longer to load than its own size suggests.
+
 > **On Windows, be careful with `~` in any path you add yourself.** Emacs sets
 > `HOME` to `AppData\Roaming` there, so `~` is not your user folder. Paths
 > derived from `user-emacs-directory`, as above, are unaffected.

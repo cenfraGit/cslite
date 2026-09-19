@@ -67,10 +67,15 @@
 (check "csharp-mode is active" (derived-mode-p 'csharp-mode) (format "%s" major-mode))
 (check "project.el resolves the project" (project-current nil))
 (when (project-current nil)
-  (check "project root is the sandbox"
-         (string= (file-name-as-directory (project-root (project-current nil)))
-                  (file-name-as-directory (expand-file-name test-sandbox)))
-         (project-root (project-current nil))))
+  ;; Not necessarily the sandbox itself: cslite-project-root is registered as a
+  ;; fallback, so a project inside a git repository is rooted at the repository.
+  ;; What matters is that the root covers the file being edited.
+  (check "project root covers the sandbox"
+         (string-prefix-p (file-name-as-directory
+                           (expand-file-name (project-root (project-current nil))))
+                          (file-name-as-directory (expand-file-name test-sandbox)))
+         (format "root %s, sandbox %s"
+                 (project-root (project-current nil)) test-sandbox)))
 
 (princ "\n== eglot connection ==\n")
 
