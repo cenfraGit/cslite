@@ -16,22 +16,32 @@ namespace CsLite;
 internal static class Features
 {
     /// <summary>How a symbol is rendered in a hover popup.</summary>
-    private static readonly SymbolDisplayFormat HoverFormat = new(
+    /// <remarks>
+    /// Namespaces are left out entirely, as Visual Studio's tooltip does.
+    /// Qualifying fully turns one EF Core call into four lines of namespaces in
+    /// the echo area, unreadable at the exact moment you wanted a quick answer,
+    /// and qualifying only what is out of scope still leaves the worst of them.
+    /// The containing type stays, which is the part that actually disambiguates.
+    /// </remarks>
+    private static readonly SymbolDisplayFormat HoverFormat = SymbolDisplayFormat.MinimallyQualifiedFormat
+        .WithMemberOptions(SymbolDisplayMemberOptions.IncludeParameters
+                           | SymbolDisplayMemberOptions.IncludeType
+                           | SymbolDisplayMemberOptions.IncludeContainingType
+                           | SymbolDisplayMemberOptions.IncludeModifiers
+                           | SymbolDisplayMemberOptions.IncludeConstantValue
+                           | SymbolDisplayMemberOptions.IncludeRef)
+        .WithParameterOptions(SymbolDisplayParameterOptions.IncludeType
+                              | SymbolDisplayParameterOptions.IncludeName
+                              | SymbolDisplayParameterOptions.IncludeDefaultValue
+                              | SymbolDisplayParameterOptions.IncludeParamsRefOut
+                              | SymbolDisplayParameterOptions.IncludeExtensionThis)
+        .AddMiscellaneousOptions(SymbolDisplayMiscellaneousOptions.IncludeNullableReferenceTypeModifier);
+
+    /// <summary>How a type itself is rendered, where the namespace is the point.</summary>
+    private static readonly SymbolDisplayFormat TypeHoverFormat = new(
         globalNamespaceStyle: SymbolDisplayGlobalNamespaceStyle.Omitted,
         typeQualificationStyle: SymbolDisplayTypeQualificationStyle.NameAndContainingTypesAndNamespaces,
-        genericsOptions: SymbolDisplayGenericsOptions.IncludeTypeParameters
-                         | SymbolDisplayGenericsOptions.IncludeTypeConstraints,
-        memberOptions: SymbolDisplayMemberOptions.IncludeParameters
-                       | SymbolDisplayMemberOptions.IncludeType
-                       | SymbolDisplayMemberOptions.IncludeContainingType
-                       | SymbolDisplayMemberOptions.IncludeModifiers
-                       | SymbolDisplayMemberOptions.IncludeConstantValue
-                       | SymbolDisplayMemberOptions.IncludeRef,
-        parameterOptions: SymbolDisplayParameterOptions.IncludeType
-                          | SymbolDisplayParameterOptions.IncludeName
-                          | SymbolDisplayParameterOptions.IncludeDefaultValue
-                          | SymbolDisplayParameterOptions.IncludeParamsRefOut
-                          | SymbolDisplayParameterOptions.IncludeExtensionThis,
+        genericsOptions: SymbolDisplayGenericsOptions.IncludeTypeParameters,
         miscellaneousOptions: SymbolDisplayMiscellaneousOptions.UseSpecialTypes
                               | SymbolDisplayMiscellaneousOptions.EscapeKeywordIdentifiers
                               | SymbolDisplayMiscellaneousOptions.IncludeNullableReferenceTypeModifier);
@@ -95,7 +105,12 @@ internal static class Features
         var symbol = await SymbolFinder.FindSymbolAtPositionAsync(document, offset, token).ConfigureAwait(false);
         if (symbol is null) return null;
 
-        var signature = symbol.ToDisplayString(HoverFormat);
+        // Hovering a type is usually a question about which type it is, so it
+        // keeps its namespace. Hovering a member is a question about the
+        // signature, where namespaces are what make it unreadable.
+        var format = symbol is ITypeSymbol or INamespaceSymbol ? TypeHoverFormat : HoverFormat;
+
+        var signature = symbol.ToDisplayString(format);
         var summary = SummaryOf(symbol);
 
         var body = new StringBuilder();

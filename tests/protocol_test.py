@@ -125,7 +125,9 @@ hover = response.get("result")
 check("hover returns content", hover is not None, json.dumps(response)[:300])
 if hover:
     value = hover["contents"]["value"]
-    check("hover shows the full signature", "Lib.Greeter.Greet(string name)" in value, repr(value[:200]))
+    # Namespaces are dropped from a member signature; the containing type stays.
+    check("hover shows the signature", "Greeter.Greet(string name)" in value, repr(value[:200]))
+    check("no namespace clutter on a member", "Lib.Greeter.Greet" not in value, repr(value[:200]))
     check("hover includes the doc summary", "greets someone by name" in value.lower(), repr(value[:200]))
 
 rid = send("textDocument/hover", {

@@ -22,20 +22,21 @@ namespace CsLite;
 internal static class SignatureHelpProvider
 {
     /// <summary>How an individual parameter is rendered inside the signature.</summary>
-    private static readonly SymbolDisplayFormat ParameterFormat = new(
-        genericsOptions: SymbolDisplayGenericsOptions.IncludeTypeParameters,
-        parameterOptions: SymbolDisplayParameterOptions.IncludeType
-                          | SymbolDisplayParameterOptions.IncludeName
-                          | SymbolDisplayParameterOptions.IncludeDefaultValue
-                          | SymbolDisplayParameterOptions.IncludeParamsRefOut
-                          | SymbolDisplayParameterOptions.IncludeExtensionThis,
-        miscellaneousOptions: SymbolDisplayMiscellaneousOptions.UseSpecialTypes
-                              | SymbolDisplayMiscellaneousOptions.IncludeNullableReferenceTypeModifier);
+    /// <remarks>
+    /// Namespaces are omitted, so a generic parameter reads as
+    /// <c>Expression&lt;Func&lt;Classroom, List&lt;Enrollment&gt;&gt;&gt;</c>
+    /// rather than spelling out every namespace in it.
+    /// </remarks>
+    private static readonly SymbolDisplayFormat ParameterFormat = SymbolDisplayFormat.MinimallyQualifiedFormat
+        .WithParameterOptions(SymbolDisplayParameterOptions.IncludeType
+                              | SymbolDisplayParameterOptions.IncludeName
+                              | SymbolDisplayParameterOptions.IncludeDefaultValue
+                              | SymbolDisplayParameterOptions.IncludeParamsRefOut
+                              | SymbolDisplayParameterOptions.IncludeExtensionThis)
+        .AddMiscellaneousOptions(SymbolDisplayMiscellaneousOptions.IncludeNullableReferenceTypeModifier);
 
-    private static readonly SymbolDisplayFormat TypeFormat = new(
-        genericsOptions: SymbolDisplayGenericsOptions.IncludeTypeParameters,
-        miscellaneousOptions: SymbolDisplayMiscellaneousOptions.UseSpecialTypes
-                              | SymbolDisplayMiscellaneousOptions.IncludeNullableReferenceTypeModifier);
+    private static readonly SymbolDisplayFormat TypeFormat = SymbolDisplayFormat.MinimallyQualifiedFormat
+        .AddMiscellaneousOptions(SymbolDisplayMiscellaneousOptions.IncludeNullableReferenceTypeModifier);
 
     public static async Task<SignatureHelp?> ForAsync(
         Document document, Position position, CancellationToken token)
@@ -161,6 +162,7 @@ internal static class SignatureHelpProvider
         else
         {
             label.Append(method.ReturnsVoid ? "void" : method.ReturnType.ToDisplayString(TypeFormat));
+
             label.Append(' ').Append(method.Name);
         }
 

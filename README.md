@@ -205,8 +205,11 @@ type analysis, and it is the one axis on which this server is not light.
 
 - **Diagnostics** — the same errors and warnings the compiler produces, on every
   keystroke, for the file you are editing.
-- **Hover** — full signature plus the `<summary>` from the doc comment. Hovering
-  a constructor shows the type's documentation.
+- **Hover** — the signature plus the `<summary>` from the doc comment. Hovering
+  a constructor shows the type's documentation. Namespaces are left off member
+  signatures, because fully qualifying one EF Core call fills the echo area
+  with four lines of them; a type keeps its namespace, since that is usually
+  the thing being asked about.
 - **Go to definition** — including across project references, because all
   projects in the tree are loaded into one solution.
 - **Completion** — Roslyn's own completion, so member access, extension methods
