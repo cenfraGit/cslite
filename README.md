@@ -3,7 +3,7 @@
 A small C# language server for Emacs, written in C#.
 
 It gives you diagnostics, hover, go-to-definition, completion, signature help,
-find-references and rename, and nothing else. It is about 2,200 lines of code
+find-references, rename and quick fixes, and nothing else. It is about 2,200 lines of code
 that you can read in an afternoon.
 
 ## What "simple" means here
@@ -165,6 +165,7 @@ diagnostics appear once it does. Then check the four features:
 | References | `M-?` on a symbol |
 | Rename | `M-x eglot-rename` |
 | All overloads | `M-x cslite-signatures` |
+| Quick fixes | `M-x eglot-code-actions` on an underlined error |
 | Signature help | Type `(` after a method name and wait for eldoc |
 
 Completion needs a front end to pop up on its own. With `company` or `corfu` a
@@ -216,6 +217,11 @@ type analysis, and it is the one axis on which this server is not light.
   marks active, so `cslite-signatures` lists all of them in a buffer with the
   parameter you are typing emphasised in each. Overloads are all offered, ordered by parameter count, and it
   keeps working while the call is still half-typed and does not yet compile.
+- **Quick fixes** — `M-x eglot-code-actions` on an error offers what Visual
+  Studio's Ctrl+. does: add the missing using, fully qualify the name, generate
+  the type. The fixes are Roslyn's own, found by reflecting over the Features
+  assemblies; a provider needing services we do not host is left out rather
+  than breaking the rest.
 - **Find references** — `M-?`, across every project in the tree.
 - **Rename** — `M-x eglot-rename`, across every file and project at once.
   Renaming a symbol that lives in a referenced assembly is refused with an
@@ -224,7 +230,7 @@ type analysis, and it is the one axis on which this server is not light.
 ## What does not work yet
 
 - Document and workspace symbols.
-- Code actions and quick fixes.
+- Refactorings that are not attached to a diagnostic (extract method, inline).
 - Decompiling into metadata: go-to-definition on a framework type finds nothing,
   because there is no source to jump to.
 - Incremental sync, formatting, semantic highlighting.

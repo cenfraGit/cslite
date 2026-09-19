@@ -56,6 +56,7 @@
 ;------------------------------------------------------------ keybindings
 
 ;; xref already binds M-. and M-? ; these are the rest.
+(global-set-key (kbd "C-c l a") #'eglot-code-actions)
 (global-set-key (kbd "C-c l d") #'eldoc-doc-buffer)
 (global-set-key (kbd "C-c l o") #'cslite-signatures)
 (global-set-key (kbd "C-c l n") #'eglot-rename)

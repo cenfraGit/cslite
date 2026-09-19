@@ -1,6 +1,6 @@
 # Tests
 
-Eight suites, none of which need a test framework installed.
+Nine suites, none of which need a test framework installed.
 
 ## Fixtures
 
@@ -48,6 +48,14 @@ one leaves every ASP.NET type unresolved. Also checks that reference packs are
 matched to the project's target framework rather than the newest installed.
 
     python tests/framework_reference_test.py fixtures/web dist/cslite.exe
+
+## code_action_test.py
+
+That an error offers a fix, that the fix arrives with its edit attached, and
+that applying the edit actually clears the error. Also that correct code offers
+nothing.
+
+    python tests/code_action_test.py fixtures/sandbox dist/cslite.exe
 
 ## generator_lock_test.py
 

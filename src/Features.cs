@@ -283,29 +283,8 @@ internal static class Features
             .RenameSymbolAsync(solution, symbol, new SymbolRenameOptions(), newName, token)
             .ConfigureAwait(false);
 
-        var changes = new Dictionary<string, IReadOnlyList<TextEdit>>();
-
-        foreach (var projectChange in renamed.GetChanges(solution).GetProjectChanges())
-        {
-            foreach (var id in projectChange.GetChangedDocuments())
-            {
-                var before = solution.GetDocument(id);
-                var after = renamed.GetDocument(id);
-                if (before?.FilePath is not { Length: > 0 } path || after is null) continue;
-
-                var original = await before.GetTextAsync(token).ConfigureAwait(false);
-                var edits = (await after.GetTextChangesAsync(before, token).ConfigureAwait(false))
-                    .OrderBy(change => change.Span.Start)
-                    .Select(change => new TextEdit(
-                        Conversions.ToRange(original, change.Span),
-                        change.NewText ?? string.Empty))
-                    .ToList();
-
-                if (edits.Count > 0) changes[Uris.FromPath(path)] = edits;
-            }
-        }
-
-        return new WorkspaceEdit(changes);
+        return await Edits.BetweenAsync(solution, renamed, token).ConfigureAwait(false)
+               ?? new WorkspaceEdit(new Dictionary<string, IReadOnlyList<TextEdit>>());
     }
 
     // -----------------------------------------------------------------------

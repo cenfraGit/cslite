@@ -102,6 +102,7 @@ internal sealed class ServerCapabilities
     public bool ReferencesProvider { get; init; }
     public bool RenameProvider { get; init; }
     public SignatureHelpOptions? SignatureHelpProvider { get; init; }
+    public bool CodeActionProvider { get; init; }
     public CompletionOptions? CompletionProvider { get; init; }
 }
 
@@ -248,3 +249,25 @@ internal sealed record SignatureHelp(
     IReadOnlyList<SignatureInformation> Signatures,
     int ActiveSignature,
     int ActiveParameter);
+
+// ---------------------------------------------------------------------------
+// Code actions
+// ---------------------------------------------------------------------------
+
+internal sealed record CodeActionContextParams(Diagnostic[]? Diagnostics, string[]? Only);
+
+internal sealed record CodeActionParams(
+    TextDocumentIdentifier TextDocument,
+    Range Range,
+    CodeActionContextParams? Context);
+
+/// <summary>
+/// One offered fix. The edit is included outright rather than resolved on
+/// demand, so accepting it costs the editor no extra round trip.
+/// </summary>
+internal sealed record CodeActionItem(string Title)
+{
+    public string? Kind { get; init; }
+    public IReadOnlyList<Diagnostic>? Diagnostics { get; init; }
+    public WorkspaceEdit? Edit { get; init; }
+}
