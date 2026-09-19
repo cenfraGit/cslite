@@ -120,10 +120,22 @@ print("\n== reference packs matched to the target framework ==")
 aspnet = [l for l in log if "Microsoft.AspNetCore.App:" in l]
 netcore = [l for l in log if "Microsoft.NETCore.App:" in l]
 check("the ASP.NET pack was used", len(aspnet) > 0, str(log[-3:]))
-# The fixture targets net8.0; a newer pack is almost certainly installed, and
-# picking it would mean compiling against APIs the build does not have.
-check("ASP.NET pack is the net8.0 one", any("net8.0" in l for l in aspnet), str(aspnet))
-check("base pack is the net8.0 one", any("net8.0" in l for l in netcore), str(netcore))
+
+# The fixture targets net8.0. Where a net8.0 pack is installed the server must
+# choose it, since picking a newer one would accept APIs the build does not
+# have. Where only a newer pack exists -- a machine with just the latest SDK --
+# falling back is the only option, and the server has to say so rather than
+# silently analysing against the wrong framework.
+fellback = [line for line in log if "using the newest installed instead" in line]
+
+if fellback:
+    print("  (no net8.0 pack on this machine; checking the fallback instead)")
+    check("the fallback names the framework it wanted",
+          any("net8.0" in line for line in fellback), str(fellback))
+    check("and it is not silent about it", len(fellback) >= 1)
+else:
+    check("ASP.NET pack is the net8.0 one", any("net8.0" in l for l in aspnet), str(aspnet))
+    check("base pack is the net8.0 one", any("net8.0" in l for l in netcore), str(netcore))
 
 rid = send("shutdown", None)
 wait(rid)

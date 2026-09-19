@@ -5,6 +5,8 @@ import sys
 import threading
 import time
 from pathlib import Path
+from urllib.parse import urlparse, unquote
+from urllib.request import url2pathname
 
 ROOT = Path(sys.argv[1]).resolve()
 SERVER = sys.argv[2]
@@ -15,6 +17,15 @@ threading.Thread(target=lambda: [None for _ in proc.stderr], daemon=True).start(
 
 _id = [0]
 failures = []
+
+
+def path_of(uri):
+    """A document URI as a local path.
+
+    Stripping "file:///" by hand works on Windows, where the drive letter
+    follows, and loses the leading slash of every path on Linux.
+    """
+    return Path(url2pathname(unquote(urlparse(uri).path)))
 
 
 def check(label, ok, detail=""):
@@ -83,7 +94,7 @@ rid = send("textDocument/references", {
     "context": {"includeDeclaration": True},
 })
 locations = wait(rid).get("result") or []
-files = sorted({Path(l["uri"].replace("file:///", "")).name for l in locations})
+files = sorted({path_of(l["uri"]).name for l in locations})
 check("found more than one location", len(locations) >= 2, json.dumps(locations)[:400])
 check("includes the declaration in Greeter.cs", "Greeter.cs" in files, str(files))
 check("includes the use in Program.cs, another project", "Program.cs" in files, str(files))
@@ -120,11 +131,11 @@ check("rename returned a workspace edit", edit is not None, json.dumps(response)
 
 if edit:
     changes = edit.get("changes", {})
-    names = sorted(Path(u.replace("file:///", "")).name for u in changes)
+    names = sorted(path_of(u).name for u in changes)
     check("edits both files", names == ["Greeter.cs", "Program.cs"], str(names))
 
     for target, edits in changes.items():
-        name = Path(target.replace("file:///", "")).name
+        name = path_of(target).name
         check(f"{name}: every edit inserts the new name",
               all(e["newText"] == "Salute" for e in edits),
               json.dumps(edits)[:200])
@@ -137,7 +148,7 @@ if edit:
 
     # Apply the edits ourselves and confirm the result is what we expect.
     for target, edits in changes.items():
-        path = Path(target.replace("file:///", ""))
+        path = path_of(target)
         lines = path.read_text().splitlines(keepends=True)
         for e in sorted(edits, key=lambda x: (-x["range"]["start"]["line"],
                                               -x["range"]["start"]["character"])):
