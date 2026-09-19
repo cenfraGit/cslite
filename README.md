@@ -164,6 +164,7 @@ diagnostics appear once it does. Then check the four features:
 | Completion | Type a `.` after a variable, then `C-M-i` |
 | References | `M-?` on a symbol |
 | Rename | `M-x eglot-rename` |
+| All overloads | `M-x cslite-signatures` |
 | Signature help | Type `(` after a method name and wait for eldoc |
 
 Completion needs a front end to pop up on its own. With `company` or `corfu` a
@@ -211,7 +212,9 @@ type analysis, and it is the one axis on which this server is not light.
   and keywords all behave correctly. This works for types from NuGet packages
   and the framework too: only *navigating* to their source is unavailable.
 - **Signature help** — typing `(` shows the parameters, with the one you are
-  on highlighted. Overloads are all offered, ordered by parameter count, and it
+  on highlighted. Eglot's echo area only ever shows the overload the server
+  marks active, so `cslite-signatures` lists all of them in a buffer with the
+  parameter you are typing emphasised in each. Overloads are all offered, ordered by parameter count, and it
   keeps working while the call is still half-typed and does not yet compile.
 - **Find references** — `M-?`, across every project in the tree.
 - **Rename** — `M-x eglot-rename`, across every file and project at once.
