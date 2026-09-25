@@ -1,6 +1,6 @@
 # Tests
 
-Thirteen suites, none of which need a test framework installed.
+Fourteen suites, none of which need a test framework installed.
 
 ## Fixtures
 
@@ -48,6 +48,15 @@ one leaves every ASP.NET type unresolved. Also checks that reference packs are
 matched to the project's target framework rather than the newest installed.
 
     python tests/framework_reference_test.py fixtures/web dist/cslite.exe
+
+## desktop_test.py
+
+A WPF project using a type that only reaches it through two project
+references. Checks that the desktop pack's WindowsBase wins over the base
+framework's facade of the same name (CS7069 otherwise), and that project
+references are followed transitively, as MSBuild does (CS0012 otherwise).
+
+    python tests/desktop_test.py fixtures/desktop dist/cslite.exe
 
 ## workspace_symbol_test.py
 

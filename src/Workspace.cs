@@ -46,11 +46,15 @@ internal sealed class CSharpWorkspace : IDisposable
             infos.Add((project, CreateProjectInfo(id, project)));
         }
 
+        var byCsproj = discovered
+            .Where(project => project.CsprojPath is not null)
+            .ToDictionary(project => project.CsprojPath!, PathComparer.Instance);
+
         var solution = _workspace.CurrentSolution;
 
         foreach (var (source, info) in infos)
         {
-            var references = source.ProjectReferences
+            var references = TransitiveReferences(source, byCsproj)
                 .Where(idsByCsproj.ContainsKey)
                 .Select(path => new ProjectReference(idsByCsproj[path]))
                 .ToList();
@@ -73,6 +77,33 @@ internal sealed class CSharpWorkspace : IDisposable
         }
 
         Log.Info($"loaded {_documentsByPath.Count} document(s) across {discovered.Count} project(s)");
+    }
+
+    /// <summary>
+    /// Every project reachable through project references. msbuild passes
+    /// references on to the projects above them and roslyn does not, so
+    /// without this a type from two projects down is unresolved (CS0012).
+    /// </summary>
+    private static HashSet<string> TransitiveReferences(
+        DiscoveredProject project, Dictionary<string, DiscoveredProject> byCsproj)
+    {
+        var seen = new HashSet<string>(PathComparer.Instance);
+        var pending = new Stack<string>(project.ProjectReferences);
+
+        while (pending.Count > 0)
+        {
+            var path = pending.Pop();
+            if (!seen.Add(path)) continue;
+
+            if (byCsproj.TryGetValue(path, out var next))
+            {
+                foreach (var reference in next.ProjectReferences) pending.Push(reference);
+            }
+        }
+
+        // a cycle back to the project itself would make roslyn reject the solution
+        if (project.CsprojPath is not null) seen.Remove(project.CsprojPath);
+        return seen;
     }
 
     private static ProjectInfo CreateProjectInfo(ProjectId id, DiscoveredProject project)

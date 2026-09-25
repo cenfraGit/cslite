@@ -11,6 +11,7 @@ artifacts cslite reads instead of running MSBuild itself:
     sandbox/  a single console project, used by the Emacs suites and by try.cmd
     web/      an ASP.NET project, which needs a second shared framework
     outline/  one file holding every kind of declaration, for the outline
+    desktop/  a wpf project reaching a type through two project references
 """
 import subprocess
 import sys
@@ -351,12 +352,95 @@ public sealed class Canvas : IShape
 }
 """)
 
+# --- desktop: wpf, and a type two project references away -------------------
+#
+# App references Mid and Side, which both reference Core, so Core arrives only
+# transitively and by two routes. App is wpf, whose WindowsBase must win over
+# the base framework's facade of the same name.
+
+for name in ("Mid", "Side"):
+    write(ROOT / "desktop" / name / f"{name}.csproj", """<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Core/Core.csproj" />
+  </ItemGroup>
+</Project>
+""")
+
+write(ROOT / "desktop" / "Core" / "Core.csproj", """<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+</Project>
+""")
+
+write(ROOT / "desktop" / "Core" / "Ledger.cs", """namespace Core;
+
+public class Ledger
+{
+    public int Count => 0;
+}
+""")
+
+write(ROOT / "desktop" / "Mid" / "Audit.cs", """using Core;
+
+namespace Mid;
+
+public class Audit
+{
+    public Ledger Ledger { get; } = new();
+}
+""")
+
+write(ROOT / "desktop" / "Side" / "Mirror.cs", """using Core;
+
+namespace Side;
+
+public class Mirror
+{
+    public Ledger Copy(Ledger ledger) => ledger;
+}
+""")
+
+write(ROOT / "desktop" / "App" / "App.csproj", """<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Mid/Mid.csproj" />
+    <ProjectReference Include="../Side/Side.csproj" />
+  </ItemGroup>
+</Project>
+""")
+
+write(ROOT / "desktop" / "App" / "Shell.cs", """using System.Windows;
+using Core;
+using Mid;
+using Side;
+
+namespace App;
+
+public class Shell : Window
+{
+    private readonly Ledger _ledger = new Mirror().Copy(new Audit().Ledger);
+
+    public void Refresh() => Dispatcher.Invoke(() => Title = _ledger.Count.ToString());
+}
+""")
+
 print(f"writing fixtures to {ROOT}")
 build(ROOT / "sample" / "App" / "App.csproj", "sample")
 build(ROOT / "sighelp" / "Sig.csproj", "sighelp")
 build(ROOT / "genlock" / "Consumer" / "Consumer.csproj", "genlock")
 build(ROOT / "web" / "Web.csproj", "web")
 build(ROOT / "outline" / "Outline.csproj", "outline")
+build(ROOT / "desktop" / "App" / "App.csproj", "desktop")
 build(ROOT / "sandbox" / "Sandbox.csproj", "sandbox", expect_success=False)
 
 # The sandbox does not compile, so check directly that the pieces cslite needs
@@ -380,6 +464,7 @@ ready. run the suites with:
   python tests/generator_lock_test.py    {ROOT / 'genlock'} dist/cslite.exe
   python tests/framework_reference_test.py {ROOT / 'web'} dist/cslite.exe
   python tests/document_symbol_test.py   {ROOT / 'outline'} dist/cslite.exe
+  python tests/desktop_test.py           {ROOT / 'desktop'} dist/cslite.exe
 
 and the Emacs suites with:
 

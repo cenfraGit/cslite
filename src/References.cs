@@ -22,6 +22,8 @@ internal static class References
     /// <summary>The framework every project compiles against, whatever else it asks for.</summary>
     private const string BaseFramework = "Microsoft.NETCore.App";
 
+    private const string DesktopFramework = "Microsoft.WindowsDesktop.App";
+
     /// <summary>
     /// Everything a project compiles against: its shared frameworks, then its
     /// NuGet packages.
@@ -40,9 +42,19 @@ internal static class References
         // make Roslyn emit CS1703 and poison every file in the project.
         var byName = new Dictionary<string, MetadataReference>(StringComparer.OrdinalIgnoreCase);
 
-        var frameworks = new SortedSet<string>(StringComparer.OrdinalIgnoreCase) { BaseFramework };
-        frameworks.UnionWith(declaredFrameworks);
-        frameworks.UnionWith(FrameworkReferencesFrom(projectDirectory));
+        // base goes last: its WindowsBase, System.Drawing and
+        // Microsoft.VisualBasic are facades, and taking them over the desktop
+        // pack's real ones leaves every wpf type unresolved (CS7069).
+        // "Microsoft.WindowsDesktop.App.WPF" is a profile of the desktop pack.
+        var frameworks = declaredFrameworks
+            .Concat(FrameworkReferencesFrom(projectDirectory))
+            .Select(name => name.StartsWith(DesktopFramework + ".", StringComparison.OrdinalIgnoreCase)
+                ? DesktopFramework
+                : name)
+            .Where(name => !string.Equals(name, BaseFramework, StringComparison.OrdinalIgnoreCase))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Append(BaseFramework)
+            .ToList();
 
         // Framework first, so a package that happens to ship a same-named
         // assembly cannot displace the one the runtime will actually load.
